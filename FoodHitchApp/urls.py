@@ -155,7 +155,9 @@ urlpatterns = [
     path('check_username/', check_username, name='check_username'),  # Add this line
     path('order-completed/', order_completed, name='order_completed'),
 
-    path('chat/<int:room_name>/', chat_room, name='chat_room'),
+    path('chat/<int:delivery_id>/', chat_room, name='customer_chat_room'),  # For customers
+    path('rider/chat/<int:delivery_id>/', chat_room, name='chat_room'),
+
 
 ]
 

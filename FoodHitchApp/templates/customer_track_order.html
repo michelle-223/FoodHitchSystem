@@ -28,11 +28,14 @@
             <div>
                 <p>Click below to chat with the assigned rider:</p>
                 {% if delivery.RiderID %}
-                    <a href="{% url 'chat_room' room_name=delivery.RiderID.RiderID %}">Chat with the Rider</a>
-                {% else %}
+                    <!-- Pass delivery_id as the parameter -->
+                    <a href="{% url 'customer_chat_room' delivery_id=delivery.DeliveryID %}">Chat with the Rider</a>
+                    {% else %}
                     <span>No Rider Assigned</span>
                 {% endif %}
             </div>
+            
+            
             
 
 

@@ -37,6 +37,14 @@
                     </span>
                     </p>
                 </div>
+
+                <!-- Button to chat with customer -->
+                <a href="{% url 'chat_room' delivery.DeliveryID %}" class="status-button chat-with-customer" style="color: #007e11;">
+                    Chat with the Customer
+                </a>
+                
+
+
                 <button class="track-button" style="margin-bottom: 30px;" onclick="trackCustomer('{{ delivery.Address }}')">Track Customer Location</button>
                 
                 <form class="status-update-form" data-delivery-id="{{ delivery.DeliveryID }}">

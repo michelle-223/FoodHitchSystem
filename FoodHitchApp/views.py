@@ -34,7 +34,7 @@ from django.contrib.auth.models import User
 from datetime import datetime
 from django.db.models import Q
 from paypal.standard.forms import PayPalPaymentsForm
-from .models import ChatRoom
+from .models import ChatRoom, ChatMessage
 
 
 def customer_register(request):
@@ -1379,9 +1379,12 @@ def calculate_delivery_fee(request):
     return JsonResponse({'delivery_fee': delivery_fee})
 
 
+
+
 @login_required
 def place_order(request):
     if request.method == 'POST':
+        # Get the logged-in customer object
         customer = request.user.customer
         cart_items = CartItem.objects.filter(CustomerID=customer)
 
@@ -1390,7 +1393,7 @@ def place_order(request):
             messages.error(request, "You cannot place an order while you have a pending delivery.")
             return redirect('customer_home')
 
-        # Check if cart is empty
+        # Check if the cart is empty
         if not cart_items.exists():
             messages.error(request, "Your cart is empty! Can't place an order.")
             return redirect('customer_home')
@@ -1401,44 +1404,48 @@ def place_order(request):
             messages.error(request, "You cannot place an order with items from different restaurants.")
             return redirect('customer_home')
 
-        # Get order details from POST data
+        # Get order details from POST data and convert them to Decimal
         payment_option = request.POST.get('payment-option')
         address = request.POST.get('address')
         subtotal = Decimal(request.POST.get('subtotal', '0'))
         delivery_fee = Decimal(request.POST.get('delivery-fee', '0'))
         total_amount = Decimal(request.POST.get('total-payable-amount', '0'))
 
-        # Validate address
         if not address:
             messages.error(request, "Address is required to place an order.")
             return redirect('place_order')
 
-        # Initialize total order amount
-        total_order_amount = Decimal(0)
+        # Create the order with a zero amount to finalize later
+        total_order_amount = Decimal(0)  # Initialize total amount as Decimal
         order_details = []
 
-        # Create the order with a zero amount
-        order = Order(CustomerID=customer, OrderTotal=total_order_amount, Date=timezone.now(), TransactionID='')
+        # Create the order with a zero amount to finalize later
+        order = Order(
+            CustomerID=customer,
+            OrderTotal=total_order_amount,
+            Date=timezone.now(),
+            TransactionID='',
+        )
         order.save()
 
-        # Loop through cart items to calculate total order amount
+        # Loop through cart items to calculate total order amount and details
         for item in cart_items:
-            item_total = Decimal(item.Quantity) * item.FoodID.Price
+            item_total = Decimal(item.Quantity) * item.FoodID.Price  # Ensure calculation uses Decimal
             total_order_amount += item_total
             order_details.append(f"{item.FoodID.FoodName} (Quantity: {item.Quantity})")
 
-        # Finalize order total
+        # Finalize order total after adding all cart items
         order.OrderTotal = total_order_amount
         order.save()
 
-        # Calculate total payable amount
+        # Calculate the total payable amount (subtotal + delivery fee)
         total_amount = total_order_amount + delivery_fee
 
         # Handle payment options
         if payment_option == 'paypal':
             paypal_dict = {
                 'business': settings.PAYPAL_RECEIVER_EMAIL,
-                'amount': total_amount,
+                'amount': total_amount,  # Use Decimal for accurate calculation
                 'item_name': f'Order from {customer.CustomerName}',
                 'invoice': order.OrderID,
                 'notify_url': request.build_absolute_uri('/paypal-ipn/'),
@@ -1450,8 +1457,8 @@ def place_order(request):
             form = PayPalPaymentsForm(initial=paypal_dict)
             rendered_form = form.render()
 
-        # Create delivery record
-        rider = order.get_assigned_rider()  # Ensure this method is implemented
+        # Create a delivery record for the order
+        rider = order.get_assigned_rider()  # Assuming method to get assigned rider
         if rider is not None:
             delivery = Delivery.objects.create(
                 CustomerID=customer,
@@ -1465,14 +1472,21 @@ def place_order(request):
                 OrderID=order
             )
 
+            # Create the chat room after delivery is created
+            ChatRoom.objects.create(order=order, customer=customer, rider=rider)
+
             # Create delivery items for each cart item
             for item in cart_items:
-                DeliveryItem.objects.create(Delivery=delivery, FoodID=item.FoodID, Quantity=item.Quantity)
+                DeliveryItem.objects.create(
+                    Delivery=delivery,
+                    FoodID=item.FoodID,
+                    Quantity=item.Quantity
+                )
 
             # Notify rider via email
             rider_email = rider.user.email
             subject = 'New Order Notification'
-            customer_name = customer.CustomerName
+            customer_name = f"{customer.CustomerName}"
             restaurant_name = cart_items.first().FoodID.restaurant.RestaurantName
             order_items = ", ".join(order_details)
             message = (
@@ -1487,7 +1501,7 @@ def place_order(request):
                 send_mail(subject, message, settings.EMAIL_HOST_USER, [rider_email])
             except Exception as e:
                 messages.error(request, "Failed to send email notification.")
-                print(f"Email send error: {e}")  # Consider logging this error instead
+                print(f"Email send error: {e}")
 
             # Store rider notifications in session
             rider_notifications = request.session.get('rider_notifications', [])
@@ -1496,15 +1510,10 @@ def place_order(request):
                 'timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S')
             })
             request.session['rider_notifications'] = rider_notifications
-
-            # ** Chat Room Creation Logic **
-            ChatRoom.objects.create(order=order, customer=customer, rider=rider)
-            # ** End of Chat Room Creation Logic **
         else:
             messages.error(request, "No rider is assigned to this order.")
             return redirect('customer_home')
 
-        # Calculate points earned based on total_amount
         # Calculate points earned based on total_amount
         points_earned = 0
         if total_amount < 50:
@@ -1524,13 +1533,13 @@ def place_order(request):
         # Clear the cart after placing the order
         cart_items.delete()
 
-        # Show success message
+        # Show success message with points earned
         messages.success(request, f"Your order has been placed successfully! You earned {points_earned:.1f} points.")
         return redirect('customer_home')
 
-    return redirect('customer_home')
-
-
+    else:
+        messages.error(request, "Invalid request.")
+        return redirect('customer_home')
 
 
 
@@ -2052,11 +2061,40 @@ def password_reset_set(request):
         return redirect('password_reset_request')
     
 
+@login_required
+def chat_room(request, delivery_id):
+    delivery = get_object_or_404(Delivery, DeliveryID=delivery_id)
+    rider = delivery.RiderID  # Rider associated with this delivery
+    customer = delivery.CustomerID  # Customer associated with this delivery
 
-def chat_room(request, room_name):
-    room = get_object_or_404(ChatRoom, id=room_name)
-    messages = room.messages.order_by("timestamp")  # Ensure `messages` is a related name in ChatRoom
+    # Check if a chat room exists for this order, customer, and rider
+    chat_room = ChatRoom.objects.filter(order=delivery.OrderID, customer=customer, rider=rider).first()
+
+    if not chat_room:
+        chat_room = ChatRoom.objects.create(
+            order=delivery.OrderID,
+            customer=customer,
+            rider=rider
+        )
+
+    # Handle the form submission (new message)
+    if request.method == 'POST':
+        message_content = request.POST.get('message')
+        if message_content:
+            # Create a new chat message
+            new_message = ChatMessage.objects.create(
+                room=chat_room,
+                sender=request.user,  # The logged-in user
+                message=message_content
+            )
+
+    # Fetch all messages for the chat room, ordered by timestamp
+    messages = chat_room.messages.all().order_by('timestamp')
+
     return render(request, "chat/chat_room.html", {
-        "room_name": room_name,
-        "messages": messages,
+        "room_name": chat_room.id,  # Pass the chat room ID for future use
+        "messages": messages,       # Pass all messages in the room
+        "customer": customer,       # Pass the customer object
+        "rider": rider,             # Pass the rider object
+        "delivery": delivery        # Pass the delivery object for context
     })

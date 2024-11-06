@@ -247,10 +247,11 @@ class ChatRoom(models.Model):
 
 
 class ChatMessage(models.Model):
-    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)  # Could be Customer or Rider
+    room = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Message from {self.sender.username} at {self.timestamp}"
+    class Meta:
+        ordering = ['timestamp']
+
