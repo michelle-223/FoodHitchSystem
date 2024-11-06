@@ -2051,40 +2051,18 @@ def password_reset_set(request):
         return redirect('password_reset_request')
     
 
-@login_required
-def chat_room(request, delivery_id):
-    delivery = get_object_or_404(Delivery, DeliveryID=delivery_id)
-    rider = delivery.RiderID  # Rider associated with this delivery
-    customer = delivery.CustomerID  # Customer associated with this delivery
+def customer_chat_view(request, rider_id):
+    rider = get_object_or_404(User, id=rider_id)
+    room_name = f'customer_{request.user.id}_rider_{rider.id}'
+    return render(request, 'chat.html', {
+        'room_name': room_name,
+        'receiver': rider,
+    })
 
-    # Check if a chat room exists for this order, customer, and rider
-    chat_room = ChatRoom.objects.filter(order=delivery.OrderID, customer=customer, rider=rider).first()
-
-    if not chat_room:
-        chat_room = ChatRoom.objects.create(
-            order=delivery.OrderID,
-            customer=customer,
-            rider=rider
-        )
-
-    # Handle the form submission (new message)
-    if request.method == 'POST':
-        message_content = request.POST.get('message')
-        if message_content:
-            # Create a new chat message
-            new_message = ChatMessage.objects.create(
-                room=chat_room,
-                sender=request.user,  # The logged-in user
-                message=message_content
-            )
-
-    # Fetch all messages for the chat room, ordered by timestamp
-    messages = chat_room.messages.all().order_by('timestamp')
-
-    return render(request, "chat/chat_room.html", {
-        "room_name": chat_room.id,  # Pass the chat room ID for future use
-        "messages": messages,       # Pass all messages in the room
-        "customer": customer,       # Pass the customer object
-        "rider": rider,             # Pass the rider object
-        "delivery": delivery        # Pass the delivery object for context
+def rider_chat_view(request, customer_id):
+    customer = get_object_or_404(User, id=customer_id)
+    room_name = f'customer_{customer.id}_rider_{request.user.id}'
+    return render(request, 'chat.html', {
+        'room_name': room_name,
+        'receiver': customer,
     })

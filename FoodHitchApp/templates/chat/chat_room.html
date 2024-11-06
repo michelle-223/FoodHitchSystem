@@ -21,16 +21,17 @@
     </div>
 
     <script>
-        // Create a function to initialize the WebSocket connection
         function createWebSocketConnection() {
-            const roomName = "{{ room_name }}"; // The room ID passed from the server
+            const roomName = "{{ room_name }}";  // Get room name from Django context
             const chatBox = document.getElementById("chat-box");
-            const socket = new WebSocket('ws://127.0.0.1:8000/ws/chat/1/');
-
+    
+            // Construct the WebSocket URL dynamically using roomName
+            const socket = new WebSocket('ws://' + window.location.host + '/ws/chat/' + roomName + '/');
+    
             socket.onopen = function() {
                 console.log('WebSocket connection opened');
             };
-
+    
             socket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
                 const messageElement = document.createElement("div");
@@ -41,29 +42,29 @@
                 chatBox.appendChild(messageElement);
                 chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to the bottom
             };
-
+    
             socket.onclose = function(e) {
                 console.log('WebSocket connection closed, attempting to reconnect...');
                 setTimeout(createWebSocketConnection, 1000);  // Reconnect after 1 second
             };
-
+    
             socket.onerror = function(error) {
                 console.log("WebSocket error:", error);
             };
-
+    
             return socket;
         }
-
+    
         // Initialize WebSocket connection
         let socket = createWebSocketConnection();
-
+    
         document.getElementById('message-form').onsubmit = function(e) {
             e.preventDefault();
             const messageInput = document.getElementById('message-input');
             const message = messageInput.value;
-
+    
             console.log("WebSocket readyState before sending:", socket.readyState);  // Debugging line
-
+    
             if (message.trim() !== '') {
                 if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify({ 'message': message }));
@@ -74,6 +75,7 @@
             }
         };
     </script>
+    
     
     
 

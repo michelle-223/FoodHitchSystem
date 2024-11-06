@@ -23,23 +23,10 @@
                 <p><strong>Order Date:</strong> {{ delivery.Date|date:"F j, Y, g:i a" }} </p>
             </div>
             <button class="track-button" onclick="trackRider('{{ delivery.RiderID.id }}')">Track Rider Location</button>
-
-
-            <div>
-                <p>Click below to chat with the assigned rider:</p>
-                {% if delivery.RiderID %}
-                    <!-- Pass delivery_id as the parameter -->
-                    <a href="{% url 'customer_chat_room' delivery_id=delivery.DeliveryID %}">Chat with the Rider</a>
-                    {% else %}
-                    <span>No Rider Assigned</span>
-                {% endif %}
-            </div>
-            
-            
-            
-
-
-
+            <a href="{% url 'customer_chat_view' rider_id=rider.id %}" class="button">
+                Chat with the Rider
+            </a>
+                        
             {% if delivery.DeliveryStatus == 'Delivered' %}
                 <button class="update-status-button" onclick="updateDeliveryStatus('{{ delivery.DeliveryID }}')">Received</button>
             {% endif %}

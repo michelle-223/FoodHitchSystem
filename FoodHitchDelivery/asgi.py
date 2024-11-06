@@ -1,16 +1,18 @@
+# your_project_name/asgi.py
+
 import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-import FoodHitchApp.routing  # Adjust to your app’s routing module
+from FoodHitchDelivery import routing  # Adjust to match your app structure
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'FoodHitchDelivery.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "FoodHitchDelivery.settings")
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            FoodHitchApp.routing.websocket_urlpatterns
+            routing.websocket_urlpatterns
         )
     ),
 })

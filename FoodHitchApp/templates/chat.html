@@ -1,0 +1,40 @@
+<!-- chat.html -->
+<div id="chat-log"></div>
+<input id="chat-message-input" type="text">
+<button id="chat-message-submit">Send</button>
+
+<script>
+    const roomName = "{{ room_name }}";
+    const userId = "{{ user.id }}";
+    const receiverId = "{{ receiver.id }}";  // Set this based on the context
+
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
+    );
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const message = data.message;
+        const senderId = data.sender_id;
+
+        const chatLog = document.getElementById('chat-log');
+        const messageElement = document.createElement('div');
+        messageElement.textContent = senderId === userId ? 'You: ' + message : 'Other: ' + message;
+        chatLog.appendChild(messageElement);
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+
+    document.getElementById('chat-message-submit').onclick = function(e) {
+        const messageInput = document.getElementById('chat-message-input');
+        const message = messageInput.value;
+        chatSocket.send(JSON.stringify({
+            'message': message,
+            'sender_id': userId,
+            'receiver_id': receiverId
+        }));
+        messageInput.value = '';
+    };
+</script>
