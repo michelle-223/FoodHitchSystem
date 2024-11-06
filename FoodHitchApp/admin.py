@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Restaurant, Menu, Favorite, Rider, CustomersFeedback, Delivery, Order, StoreOwner
+from .models import Customer, Restaurant, Menu, Favorite, Rider, CustomersFeedback, Delivery, Order, StoreOwner, ChatRoom, ChatMessage
 
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('CustomerID', 'CustomerName', 'user_username', 'user_email', 'Phone')
@@ -97,3 +97,5 @@ admin.site.register(CustomersFeedback, CustomerFeedbackAdmin)
 admin.site.register(Delivery, DeliveryAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(StoreOwner, StoreOwnerAdmin)  # Registering StoreOwner
+admin.site.register(ChatRoom)
+admin.site.register(ChatMessage)

@@ -1378,13 +1378,9 @@ def calculate_delivery_fee(request):
 
     return JsonResponse({'delivery_fee': delivery_fee})
 
-
-
-
 @login_required
 def place_order(request):
     if request.method == 'POST':
-        # Get the logged-in customer object
         customer = request.user.customer
         cart_items = CartItem.objects.filter(CustomerID=customer)
 
@@ -1393,7 +1389,6 @@ def place_order(request):
             messages.error(request, "You cannot place an order while you have a pending delivery.")
             return redirect('customer_home')
 
-        # Check if the cart is empty
         if not cart_items.exists():
             messages.error(request, "Your cart is empty! Can't place an order.")
             return redirect('customer_home')
@@ -1415,7 +1410,7 @@ def place_order(request):
             messages.error(request, "Address is required to place an order.")
             return redirect('place_order')
 
-        # Create the order with a zero amount to finalize later
+        # Create a single order record
         total_order_amount = Decimal(0)  # Initialize total amount as Decimal
         order_details = []
 
@@ -1471,9 +1466,6 @@ def place_order(request):
                 DeliveryStatus='Pending',
                 OrderID=order
             )
-
-            # Create the chat room after delivery is created
-            ChatRoom.objects.create(order=order, customer=customer, rider=rider)
 
             # Create delivery items for each cart item
             for item in cart_items:
@@ -1537,9 +1529,7 @@ def place_order(request):
         messages.success(request, f"Your order has been placed successfully! You earned {points_earned:.1f} points.")
         return redirect('customer_home')
 
-    else:
-        messages.error(request, "Invalid request.")
-        return redirect('customer_home')
+    return redirect('customer_home')
 
 
 

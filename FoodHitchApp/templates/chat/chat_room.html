@@ -25,7 +25,7 @@
         function createWebSocketConnection() {
             const roomName = "{{ room_name }}"; // The room ID passed from the server
             const chatBox = document.getElementById("chat-box");
-            const socket = new WebSocket('ws://' + window.location.host + '/ws/chat/' + roomName + '/');
+            const socket = new WebSocket('ws://127.0.0.1:8000/ws/chat/1/');
 
             socket.onopen = function() {
                 console.log('WebSocket connection opened');
